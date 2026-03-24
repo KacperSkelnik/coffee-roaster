@@ -5,7 +5,9 @@
 #define BAUD_RATE     19200
 #define NUM_REGS      16
 
-unsigned long lastRead = 0;// RX, TX
+unsigned long lastRead          = 0; // RX, TX
+unsigned long ssrStateChanged   = 0;
+bool spinning                   = false;
 
 ModbusRTUSlave modbusSlave(Serial, -1);
 
@@ -19,11 +21,15 @@ MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
 
 uint16_t holdingRegs[NUM_REGS] = {0};
 
+constexpr int SSR_PIN = 7;
+
 void setup() {
     Serial.begin(BAUD_RATE);
 
     pinMode(thermoVCC, OUTPUT); digitalWrite(thermoVCC, HIGH);
     pinMode(thermoGND, OUTPUT); digitalWrite(thermoGND, LOW);
+
+    pinMode(SSR_PIN, OUTPUT);
 
     delay(500);
 
@@ -35,8 +41,9 @@ void setup() {
 void loop() {
     modbusSlave.poll();
 
-    if (millis() - lastRead > 250) {
-        lastRead = millis();
+    const unsigned long now = millis();
+    if (now - lastRead > 200) {
+        lastRead = now;
 
         const float tempC = thermocouple.readCelsius();
 
@@ -45,5 +52,19 @@ void loop() {
         } else {
             holdingRegs[0] = 0xFFFF;
         }
+    }
+
+    if (now - ssrStateChanged > 1000 && !spinning) {
+        ssrStateChanged = now;
+        spinning = true;
+
+        digitalWrite(SSR_PIN, HIGH);
+    }
+
+    if (now - ssrStateChanged > 1000 && spinning) {
+        ssrStateChanged = now;
+        spinning = false;
+
+        digitalWrite(SSR_PIN, LOW);
     }
 }

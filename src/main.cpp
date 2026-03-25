@@ -9,27 +9,37 @@ unsigned long lastRead          = 0; // RX, TX
 unsigned long ssrStateChanged   = 0;
 bool spinning                   = false;
 
+constexpr int SSR_PIN = 7;
+
 ModbusRTUSlave modbusSlave(Serial, -1);
 
-constexpr int thermoGND = 2;
-constexpr int thermoVCC = 3;
-constexpr int thermoCLK = 4;
-constexpr int thermoCS  = 5;
-constexpr int thermoDO  = 6;
+constexpr int thermoBT_GND = 2;
+constexpr int thermoBT_VCC = 3;
+constexpr int thermoBT_CLK = 4;
+constexpr int thermoBT_CS  = 5;
+constexpr int thermoBT_DO  = 6;
 
-MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
+constexpr int thermoET_GND = 8;
+constexpr int thermoET_VCC = 9;
+constexpr int thermoET_CLK = 10;
+constexpr int thermoET_CS  = 11;
+constexpr int thermoET_DO  = 12;
+
+MAX6675 thermocoupleBT(thermoBT_CLK, thermoBT_CS, thermoBT_DO);
+MAX6675 thermocoupleET(thermoET_CLK, thermoET_CS, thermoET_DO);
 
 uint16_t holdingRegs[NUM_REGS] = {0};
 
-constexpr int SSR_PIN = 7;
-
 void setup() {
+    pinMode(SSR_PIN, OUTPUT);
+
     Serial.begin(BAUD_RATE);
 
-    pinMode(thermoVCC, OUTPUT); digitalWrite(thermoVCC, HIGH);
-    pinMode(thermoGND, OUTPUT); digitalWrite(thermoGND, LOW);
+    pinMode(thermoBT_VCC, OUTPUT); digitalWrite(thermoBT_VCC, HIGH);
+    pinMode(thermoBT_GND, OUTPUT); digitalWrite(thermoBT_GND, LOW);
 
-    pinMode(SSR_PIN, OUTPUT);
+    pinMode(thermoET_VCC, OUTPUT); digitalWrite(thermoET_VCC, HIGH);
+    pinMode(thermoET_GND, OUTPUT); digitalWrite(thermoET_GND, LOW);
 
     delay(500);
 
@@ -45,12 +55,19 @@ void loop() {
     if (now - lastRead > 200) {
         lastRead = now;
 
-        const float tempC = thermocouple.readCelsius();
+        const float tempBT_C = thermocoupleBT.readCelsius();
+        const float tempET_C = thermocoupleET.readCelsius();
 
-        if (!isnan(tempC)) {
-            holdingRegs[0] = static_cast<uint16_t>(tempC * 100);
+        if (!isnan(tempBT_C)) {
+            holdingRegs[0] = static_cast<uint16_t>(tempBT_C * 100);
         } else {
             holdingRegs[0] = 0xFFFF;
+        }
+
+        if (!isnan(tempET_C)) {
+            holdingRegs[1] = static_cast<uint16_t>(tempET_C * 100);
+        } else {
+            holdingRegs[1] = 0xFFFF;
         }
     }
 

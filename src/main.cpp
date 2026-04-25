@@ -71,7 +71,7 @@ void loop() {
         }
     }
 
-    if (now - ssrStateChanged > 1000 && !spinning) {
+    if (now - ssrStateChanged > 250 && !spinning) {
         ssrStateChanged = now;
         spinning = true;
 
